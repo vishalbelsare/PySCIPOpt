@@ -55,23 +55,19 @@ cdef class Conshdlr:
 
     def consenfolp(self, constraints, nusefulconss, solinfeasible):
         '''calls enforcing method of constraint handler for LP solution for all constraints added'''
-        print("python error in consenfolp: this method needs to be implemented")
-        return {}
+        raise NotImplementedError("consenfolp() is a fundamental callback and should be implemented in the derived class")
 
     def consenforelax(self, solution, constraints, nusefulconss, solinfeasible):
         '''calls enforcing method of constraint handler for a relaxation solution for all constraints added'''
-        print("python error in consenforelax: this method needs to be implemented")
-        return {}
+        raise NotImplementedError("consenforelax() is a fundamental callback and should be implemented in the derived class")
 
     def consenfops(self, constraints, nusefulconss, solinfeasible, objinfeasible):
         '''calls enforcing method of constraint handler for pseudo solution for all constraints added'''
-        print("python error in consenfops: this method needs to be implemented")
-        return {}
+        raise NotImplementedError("consenfops() is a fundamental callback and should be implemented in the derived class")
 
     def conscheck(self, constraints, solution, checkintegrality, checklprows, printreason, completely):
         '''calls feasibility check method of constraint handler '''
-        print("python error in conscheck: this method needs to be implemented")
-        return {}
+        raise NotImplementedError("conscheck() is a fundamental callback and should be implemented in the derived class")
 
     def consprop(self, constraints, nusefulconss, nmarkedconss, proptiming):
         '''calls propagation method of constraint handler '''
@@ -89,8 +85,7 @@ cdef class Conshdlr:
 
     def conslock(self, constraint, locktype, nlockspos, nlocksneg):
         '''variable rounding lock method of constraint handler'''
-        print("python error in conslock: this method needs to be implemented")
-        return {}
+        raise NotImplementedError("conslock() is a fundamental callback and should be implemented in the derived class")
 
     def consactive(self, constraint):
         '''sets activation notification method of constraint handler '''
@@ -136,6 +131,14 @@ cdef class Conshdlr:
         '''calls diving solution enforcement callback of constraint handler, if it exists '''
         pass
 
+    def consgetpermsymgraph(self):
+        '''permutation symmetry detection graph getter callback, if it exists '''
+        pass
+
+    def consgetsignedpermsymgraph(self):
+        '''signed permutation symmetry detection graph getter callback, if it exists '''
+        pass
+
 
 # local helper functions for the interface
 cdef Conshdlr getPyConshdlr(SCIP_CONSHDLR* conshdlr):
@@ -150,64 +153,69 @@ cdef Constraint getPyCons(SCIP_CONS* cons):
 
 
 
-cdef SCIP_RETCODE PyConshdlrCopy (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_Bool* valid) with gil:
+cdef SCIP_RETCODE PyConshdlrCopy (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_Bool* valid) noexcept with gil:
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsFree (SCIP* scip, SCIP_CONSHDLR* conshdlr) with gil:
+cdef SCIP_RETCODE PyConsFree (SCIP* scip, SCIP_CONSHDLR* conshdlr) noexcept with gil:
     PyConshdlr = getPyConshdlr(conshdlr)
     PyConshdlr.consfree()
-    Py_DECREF(PyConshdlr)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsInit (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss) with gil:
+cdef SCIP_RETCODE PyConsInit (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     PyConshdlr.consinit(constraints)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsExit (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss) with gil:
+cdef SCIP_RETCODE PyConsExit (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     PyConshdlr.consexit(constraints)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsInitpre (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss) with gil:
+cdef SCIP_RETCODE PyConsInitpre (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     PyConshdlr.consinitpre(constraints)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsExitpre (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss) with gil:
+cdef SCIP_RETCODE PyConsExitpre (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     PyConshdlr.consexitpre(constraints)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsInitsol (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss) with gil:
+cdef SCIP_RETCODE PyConsInitsol (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     PyConshdlr.consinitsol(constraints)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsExitsol (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss, SCIP_Bool restart) with gil:
+cdef SCIP_RETCODE PyConsExitsol (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss, SCIP_Bool restart) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     PyConshdlr.consexitsol(constraints, restart)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsDelete (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, SCIP_CONSDATA** consdata) with gil:
+cdef SCIP_RETCODE PyConsDelete (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, SCIP_CONSDATA** consdata) noexcept with gil:
     PyConshdlr = getPyConshdlr(conshdlr)
     PyCons = getPyCons(cons)
     assert <Constraint>consdata[0] == PyCons
@@ -216,7 +224,7 @@ cdef SCIP_RETCODE PyConsDelete (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* 
     Py_DECREF(PyCons)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsTrans (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* sourcecons, SCIP_CONS** targetcons) with gil:
+cdef SCIP_RETCODE PyConsTrans (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* sourcecons, SCIP_CONS** targetcons) noexcept with gil:
     cdef Constraint PyTargetCons
     PyConshdlr = getPyConshdlr(conshdlr)
     PySourceCons = getPyCons(sourcecons)
@@ -235,18 +243,20 @@ cdef SCIP_RETCODE PyConsTrans (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* s
             PySourceCons.isRemovable(), PySourceCons.isStickingAtNode()))
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsInitlp (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss, SCIP_Bool* infeasible) with gil:
+cdef SCIP_RETCODE PyConsInitlp (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss, SCIP_Bool* infeasible) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     result_dict = PyConshdlr.consinitlp(constraints)
     infeasible[0] = result_dict.get("infeasible", infeasible[0])
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsSepalp (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss, int nusefulconss, SCIP_RESULT* result) with gil:
+cdef SCIP_RETCODE PyConsSepalp (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss, int nusefulconss, SCIP_RESULT* result) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     result_dict = PyConshdlr.conssepalp(constraints, nusefulconss)
@@ -254,9 +264,10 @@ cdef SCIP_RETCODE PyConsSepalp (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS**
     return SCIP_OKAY
 
 cdef SCIP_RETCODE PyConsSepasol (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss, int nusefulconss,
-                                 SCIP_SOL* sol, SCIP_RESULT* result) with gil:
+                                 SCIP_SOL* sol, SCIP_RESULT* result) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     solution = Solution.create(scip, sol)
@@ -265,18 +276,20 @@ cdef SCIP_RETCODE PyConsSepasol (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS*
     return SCIP_OKAY
 
 cdef SCIP_RETCODE PyConsEnfolp (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss, int nusefulconss,
-                                SCIP_Bool solinfeasible, SCIP_RESULT* result) with gil:
+                                SCIP_Bool solinfeasible, SCIP_RESULT* result) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     result_dict = PyConshdlr.consenfolp(constraints, nusefulconss, solinfeasible)
     result[0] = result_dict.get("result", <SCIP_RESULT>result[0])
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsEnforelax (SCIP* scip, SCIP_SOL* sol, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss, int nusefulconss, SCIP_Bool solinfeasible, SCIP_RESULT* result) with gil:
+cdef SCIP_RETCODE PyConsEnforelax (SCIP* scip, SCIP_SOL* sol, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss, int nusefulconss, SCIP_Bool solinfeasible, SCIP_RESULT* result) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     solution = Solution.create(scip, sol)
@@ -285,9 +298,10 @@ cdef SCIP_RETCODE PyConsEnforelax (SCIP* scip, SCIP_SOL* sol, SCIP_CONSHDLR* con
     return SCIP_OKAY
 
 cdef SCIP_RETCODE PyConsEnfops (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss, int nusefulconss,
-                                SCIP_Bool solinfeasible, SCIP_Bool objinfeasible, SCIP_RESULT* result) with gil:
+                                SCIP_Bool solinfeasible, SCIP_Bool objinfeasible, SCIP_RESULT* result) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     result_dict = PyConshdlr.consenfops(constraints, nusefulconss, solinfeasible, objinfeasible)
@@ -295,9 +309,10 @@ cdef SCIP_RETCODE PyConsEnfops (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS**
     return SCIP_OKAY
 
 cdef SCIP_RETCODE PyConsCheck (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss, SCIP_SOL* sol, SCIP_Bool checkintegrality,
-                               SCIP_Bool checklprows, SCIP_Bool printreason, SCIP_Bool completely, SCIP_RESULT* result) with gil:
+                               SCIP_Bool checklprows, SCIP_Bool printreason, SCIP_Bool completely, SCIP_RESULT* result) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     solution = Solution.create(scip, sol)
@@ -306,9 +321,10 @@ cdef SCIP_RETCODE PyConsCheck (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** 
     return SCIP_OKAY
 
 cdef SCIP_RETCODE PyConsProp (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss, int nusefulconss, int nmarkedconss,
-                              SCIP_PROPTIMING proptiming, SCIP_RESULT* result) with gil:
+                              SCIP_PROPTIMING proptiming, SCIP_RESULT* result) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     result_dict = PyConshdlr.consprop(constraints, nusefulconss, nmarkedconss, proptiming)
@@ -319,9 +335,10 @@ cdef SCIP_RETCODE PyConsPresol (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS**
                                 int nnewfixedvars, int nnewaggrvars, int nnewchgvartypes, int nnewchgbds, int nnewholes,
                                 int nnewdelconss, int nnewaddconss, int nnewupgdconss, int nnewchgcoefs, int nnewchgsides,
                                 int* nfixedvars, int* naggrvars, int* nchgvartypes, int* nchgbds, int* naddholes,
-                                int* ndelconss, int* naddconss, int* nupgdconss, int* nchgcoefs, int* nchgsides, SCIP_RESULT* result) with gil:
+                                int* ndelconss, int* naddconss, int* nupgdconss, int* nchgcoefs, int* nchgsides, SCIP_RESULT* result) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     # dictionary for input/output parameters
@@ -354,12 +371,12 @@ cdef SCIP_RETCODE PyConsPresol (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS**
     return SCIP_OKAY
 
 cdef SCIP_RETCODE PyConsResprop (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, SCIP_VAR* infervar, int inferinfo,
-                                 SCIP_BOUNDTYPE boundtype, SCIP_BDCHGIDX* bdchgidx, SCIP_Real relaxedbd, SCIP_RESULT* result) with gil:
+                                 SCIP_BOUNDTYPE boundtype, SCIP_BDCHGIDX* bdchgidx, SCIP_Real relaxedbd, SCIP_RESULT* result) noexcept with gil:
     PyConshdlr = getPyConshdlr(conshdlr)
     PyConshdlr.consresprop()
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsLock (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, SCIP_LOCKTYPE locktype, int nlockspos, int nlocksneg) with gil:
+cdef SCIP_RETCODE PyConsLock (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, SCIP_LOCKTYPE locktype, int nlockspos, int nlocksneg) noexcept with gil:
     PyConshdlr = getPyConshdlr(conshdlr)
     if cons == NULL:
         PyConshdlr.conslock(None, locktype, nlockspos, nlocksneg)
@@ -368,39 +385,40 @@ cdef SCIP_RETCODE PyConsLock (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* co
         PyConshdlr.conslock(PyCons, locktype, nlockspos, nlocksneg)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsActive (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons) with gil:
+cdef SCIP_RETCODE PyConsActive (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons) noexcept with gil:
     PyConshdlr = getPyConshdlr(conshdlr)
     PyCons = getPyCons(cons)
     PyConshdlr.consactive(PyCons)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsDeactive (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons) with gil:
+cdef SCIP_RETCODE PyConsDeactive (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons) noexcept with gil:
     PyConshdlr = getPyConshdlr(conshdlr)
     PyCons = getPyCons(cons)
     PyConshdlr.consdeactive(PyCons)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsEnable (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons) with gil:
+cdef SCIP_RETCODE PyConsEnable (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons) noexcept with gil:
     PyConshdlr = getPyConshdlr(conshdlr)
     PyCons = getPyCons(cons)
     PyConshdlr.consenable(PyCons)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsDisable (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons) with gil:
+cdef SCIP_RETCODE PyConsDisable (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons) noexcept with gil:
     PyConshdlr = getPyConshdlr(conshdlr)
     PyCons = getPyCons(cons)
     PyConshdlr.consdisable(PyCons)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsDelvars (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss) with gil:
+cdef SCIP_RETCODE PyConsDelvars (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss) noexcept with gil:
+    cdef int i
     PyConshdlr = getPyConshdlr(conshdlr)
-    cdef constraints = []
+    constraints = []
     for i in range(nconss):
         constraints.append(getPyCons(conss[i]))
     PyConshdlr.consdelvars(constraints)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsPrint (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, FILE* file) with gil:
+cdef SCIP_RETCODE PyConsPrint (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, FILE* file) noexcept with gil:
     PyConshdlr = getPyConshdlr(conshdlr)
     PyCons = getPyCons(cons)
     # TODO: pass file
@@ -411,7 +429,7 @@ cdef SCIP_RETCODE PyConsCopy (SCIP* scip, SCIP_CONS** cons, const char* name, SC
                               SCIP_CONS* sourcecons, SCIP_HASHMAP* varmap, SCIP_HASHMAP* consmap, SCIP_Bool initial,
                               SCIP_Bool separate, SCIP_Bool enforce, SCIP_Bool check, SCIP_Bool propagate, SCIP_Bool local,
                               SCIP_Bool modifiable, SCIP_Bool dynamic, SCIP_Bool removable, SCIP_Bool stickingatnode,
-                              SCIP_Bool isglobal, SCIP_Bool* valid) with gil:
+                              SCIP_Bool isglobal, SCIP_Bool* valid) noexcept with gil:
     # TODO everything!
     PyConshdlr = getPyConshdlr(sourceconshdlr)
     PyConshdlr.conscopy()
@@ -421,14 +439,14 @@ cdef SCIP_RETCODE PyConsCopy (SCIP* scip, SCIP_CONS** cons, const char* name, SC
 cdef SCIP_RETCODE PyConsParse (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS** cons, const char* name, const char* str,
                                SCIP_Bool initial, SCIP_Bool separate, SCIP_Bool enforce, SCIP_Bool check, SCIP_Bool propagate,
                                SCIP_Bool local, SCIP_Bool modifiable, SCIP_Bool dynamic, SCIP_Bool removable,
-                               SCIP_Bool stickingatnode, SCIP_Bool* success) with gil:
+                               SCIP_Bool stickingatnode, SCIP_Bool* success) noexcept with gil:
     # TODO everything!
     PyConshdlr = getPyConshdlr(conshdlr)
     PyConshdlr.consparse()
     success[0] = False
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsGetvars (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, SCIP_VAR** vars, int varssize, SCIP_Bool* success) with gil:
+cdef SCIP_RETCODE PyConsGetvars (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, SCIP_VAR** vars, int varssize, SCIP_Bool* success) noexcept with gil:
     # TODO
     PyConshdlr = getPyConshdlr(conshdlr)
     PyCons = getPyCons(cons)
@@ -436,7 +454,7 @@ cdef SCIP_RETCODE PyConsGetvars (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS*
     success[0] = False
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyConsGetnvars (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, int* nvars, SCIP_Bool* success) with gil:
+cdef SCIP_RETCODE PyConsGetnvars (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, int* nvars, SCIP_Bool* success) noexcept with gil:
     PyConshdlr = getPyConshdlr(conshdlr)
     PyCons = getPyCons(cons)
     result_dict = PyConshdlr.consgetnvars(PyCons)
@@ -445,10 +463,26 @@ cdef SCIP_RETCODE PyConsGetnvars (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS
     return SCIP_OKAY
 
 cdef SCIP_RETCODE PyConsGetdivebdchgs (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_DIVESET* diveset, SCIP_SOL* sol,
-                                       SCIP_Bool* success, SCIP_Bool* infeasible) with gil:
+                                       SCIP_Bool* success, SCIP_Bool* infeasible) noexcept with gil:
     # TODO
     PyConshdlr = getPyConshdlr(conshdlr)
     PyConshdlr.consgetdivebdchgs()
     success[0] = False
     infeasible[0] = False
+    return SCIP_OKAY
+
+cdef SCIP_RETCODE PyConsGetPermSymGraph (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, SYM_GRAPH* graph,
+                                         SCIP_Bool* success) noexcept with gil:
+    # TODO
+    PyConshdlr = getPyConshdlr(conshdlr)
+    PyConshdlr.consgetpermsymgraph()
+    success[0] = False
+    return SCIP_OKAY
+
+cdef SCIP_RETCODE PyConsGetSignedPermSymGraph (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, SYM_GRAPH* graph,
+                                               SCIP_Bool* success) noexcept with gil:
+    # TODO
+    PyConshdlr = getPyConshdlr(conshdlr)
+    PyConshdlr.consgetsignedpermsymgraph()
+    success[0] = False
     return SCIP_OKAY

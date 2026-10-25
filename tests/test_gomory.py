@@ -187,7 +187,7 @@ class GMI(Sepa):
         if not scip.isLPSolBasic():
             return {"result": result}
 
-        #TODO: add SCIPgetNLPBranchCands
+        assert type(scip.getNLPBranchCands()) == int
         # get var data ---> this is the same as getVars!
         vars = scip.getVars(transformed = True)
 
@@ -340,6 +340,3 @@ def test_CKS():
     # solve problem
     s.optimize()
     s.printStatistics()
-
-if __name__ == "__main__":
-    test_CKS()

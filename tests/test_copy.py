@@ -1,4 +1,5 @@
 from pyscipopt import Model
+from helpers.utils import random_mip_1
 
 def test_copy():
     # create solver instance
@@ -9,7 +10,7 @@ def test_copy():
     y = s.addVar("y", vtype = 'C', obj = 2.0)
     s.setObjective(4.0 * y, clear = False)
 
-    c = s.addCons(x + 2 * y >= 1.0)
+    c = s.addCons(x + 2 * y >= 1.0, modifiable = True)
 
     s2 = Model(sourceModel=s)
 
@@ -18,6 +19,5 @@ def test_copy():
     s2.optimize()
 
     assert s.getObjVal() == s2.getObjVal()
+    assert s.getConss()[0].isModifiable() and s2.getConss()[0].isModifiable()
 
-if __name__ == "__main__":
-    test_copy()

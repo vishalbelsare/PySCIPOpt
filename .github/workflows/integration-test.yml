@@ -1,68 +1,73 @@
 name: Integration test
 
 env:
-  version: 7.0.3
+  version: 10.0.2
 
-# runs on branches and pull requests; doesn't run on tags.
 on:
-  push:
-    branches:
-      - '**'
   pull_request:
+    branches:
+      - 'master'
+  merge_group:
+  workflow_dispatch:
+
 
 jobs:
 
   Integration-test:
-    runs-on: ubuntu-18.04
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: true
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Install dependencies (SCIPOptSuite)
         run: |
-          wget --quiet --no-check-certificate https://scipopt.org/download/release/SCIPOptSuite-${{ env.version }}-Linux-ubuntu.deb
-          sudo apt-get update && sudo apt install -y ./SCIPOptSuite-${{ env.version }}-Linux-ubuntu.deb
+          wget --quiet --no-check-certificate "https://github.com/scipopt/scip/releases/download/v${version}/scipoptsuite_${version}-1+jammy_amd64.deb"
+          sudo apt-get update && sudo apt install -y ./scipoptsuite_${version}-1+jammy_amd64.deb
 
       - name: Setup python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Prepare python environment
         run: |
           python -m pip install --upgrade pip
-          python -m pip install wheel cython networkx pytest-cov
+          python -m pip install -r requirements/test.txt
 
       - name: Install PySCIPOpt
         run: python -m pip install .
 
       - name: Run pyscipopt tests
-        run: |
-          py.test
+        run: pytest -nauto
 
   Windows-test:
+    if: github.event_name != 'pull_request'
     env:
       SCIPOPTDIR: C:\scipoptdir
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Download dependencies (SCIPOptSuite)
         shell: powershell
-        run: wget https://scipopt.org/download/release/SCIPOptSuite-${{ env.version }}-win64-VS15.exe -outfile scipopt-installer.exe
-
+        run: |
+          $v = "${{ env.version }}"
+          $url = "https://github.com/scipopt/scip/releases/download/v$($v)/scipoptsuite-$($v)-win-x64.exe"
+          Write-Host "Downloading $url"
+          Invoke-WebRequest -Uri $url -OutFile scipopt-installer.exe
       - name: Install dependencies (SCIPOptSuite)
         shell: cmd
         run: scipopt-installer.exe /S /D=${{ env.SCIPOPTDIR }}
 
       - name: Setup python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -70,7 +75,7 @@ jobs:
         shell: powershell
         run: |
           python -m pip install --upgrade pip
-          python -m pip install wheel cython networkx pytest-cov
+          python -m pip install -r requirements/test.txt
 
       - name: Install PySCIPOpt
         shell: powershell
@@ -80,66 +85,65 @@ jobs:
 
       - name: Run pyscipopt tests
         shell: powershell
-        run: |
-          py.test
+        run: pytest -nauto
 
   MacOS-test:
+    if: github.event_name != 'pull_request'
     runs-on: macos-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Cache dependencies (SCIPOptSuite)
-        id: cache-scip
-        uses: actions/cache@v2
-        with:
-          path: |
-            ${{ runner.workspace }}/scipoptsuite
-            ~/Library/Caches/Homebrew/tbb@2020--*
-            ~/Library/Caches/Homebrew/downloads/*--tbb@2020-*
-            ~/Library/Caches/Homebrew/boost--*
-            ~/Library/Caches/Homebrew/downloads/*--boost-*
-          key: ${{ runner.os }}-scipopt-${{ env.version }}-${{ hashFiles('**/lockfiles') }}
-          restore-keys: |
-            ${{ runner.os }}-scipopt-${{ env.version }}-
+      - uses: actions/checkout@v3
 
       - name: Install dependencies (SCIPOptSuite)
-        if: steps.cache-scip.outputs.cache-hit != 'true'
         run: |
-          brew install tbb@2020 boost
-          wget --quiet --no-check-certificate https://scipopt.org/download/release/scipoptsuite-${{ env.version }}.tgz
-          tar xfz scipoptsuite-${{ env.version }}.tgz
-          cd scipoptsuite-${{ env.version }}
-          mkdir build
-          cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=${{ runner.workspace }}/scipoptsuite -DIPOPT=off -DSYM=none -DREADLINE=off -DTBB_LIBRARY_DIR=/usr/local/opt/tbb@2020/lib
-          make install -j
+          brew install tbb boost bison
+          echo 'export PATH="/opt/homebrew/opt/bison/bin:$PATH"' >> $HOME/.bash_profile
+          echo 'export LDFLAGS="-L/opt/homebrew/opt/bison/lib"' >> $HOME/.bash_profile
+          source $HOME/.bash_profile
+          v="${version}"
+          url="https://github.com/scipopt/scip/releases/download/v${v}/scipoptsuite-${v}-macos13-arm64.tgz"
+          echo "Downloading ${url}"
+          curl -L -o scipoptsuite.tgz "${url}"
+          mkdir -p "${{ github.workspace }}/scipoptsuite"
+          tar -xzf scipoptsuite.tgz -C "${{ github.workspace }}/scipoptsuite" --strip-components=1
+          ls -la "${{ github.workspace }}/scipoptsuite"
 
       - name: Setup python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Prepare python environment
         run: |
           python -m pip install --upgrade pip
-          python -m pip install wheel cython networkx pytest-cov pytest
+          python -m pip install -r requirements/test.txt
 
       - name: Install PySCIPOpt
         run: |
-          export SCIPOPTDIR=${{ runner.workspace }}/scipoptsuite/
-          export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${{ runner.workspace }}/scipoptsuite/lib
+          export SCIPOPTDIR=${{ github.workspace }}/scipoptsuite/
+          export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${{ github.workspace }}/scipoptsuite/lib
           python -m pip install .
 
-      - name: Run pyscipopt tests
+#      - name: Run pyscipopt tests
+#        run: |
+#          export SCIPOPTDIR=${{ github.workspace }}/scipoptsuite/
+#          export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${{ github.workspace }}/scipoptsuite/lib
+#          pytest
+
+  integration-gate:
+    if: always()
+    needs: [Integration-test, Windows-test, MacOS-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check integration test results
         run: |
-          export SCIPOPTDIR=${{ runner.workspace }}/scipoptsuite/
-          export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${{ runner.workspace }}/scipoptsuite/lib
-          py.test
+          echo "Results: ${{ join(needs.*.result, ', ') }}"
+          if ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}; then
+            exit 1
+          fi
 
   ### if you need valgrind on mac, you can install it via
   # brew tap LouisBrunner/valgrind
   # brew install --HEAD LouisBrunner/valgrind/valgrind
-

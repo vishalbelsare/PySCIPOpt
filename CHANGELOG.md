@@ -2,16 +2,397 @@
 
 ## Unreleased
 ### Added
+- Added docstrings to the bundled stubs in release wheels for Python 3.10 and later.
+- Added more type annotations and deprecation markers to the stubs.
+- Added tests for `getObjVal()` and `getVal()`
+- Added `addConsLinear()` to add linear constraints from variables and coefficients without building an expression
 ### Fixed
-- close file descriptors after file operation is finished
-- delete variable pointer from model when calling delVar
+- Dual and Farkas getters for linear, knapsack, and logicor constraints now return zero when presolving has removed them.
+- Fixed incorrect `getObjVal()` result when called before `getBestSol()` (e.g., in event handlers).
+- Fixed `getDualsolKnapsack()` and `getDualfarkasKnapsack()` returning 0 for original constraints, and the handler check in `getVarsAnd()` that could never fail
+### Changed
+- Replaced `format()` with f-strings in examples
+- Made expression fields read-only to prevent accidental runtime modification
+- Methods taking a list of variables (e.g. `addConsKnapsack()`) no longer convert it to a NumPy array to check its dimension
+### Removed
+
+## 6.3.0 - 2026.10.11
+### Added
+- Added the following methods with tests: `getNNodesLeft()`, `getNRuns()`, `getNReoptRuns()`, `addNNodes()`, `getDeterministicTime()`, `getAvgDualbound()`, `getMaxTotalDepth()`, `getNBacktracks()`, `getFocusNode()`, `getAvgLowerbound()`, `getFirstPrimalBound()`, `getLowerboundRoot()`, `getUpperbound()`, `getNObjlimLeaves()`
+- Added `addConsCumulative()` for SCIP cumulative constraints (#1222)
+- Added `addConsLogicor()`, `addCoefLogicor()`, `getNVarsLogicor()`, `getVarsLogicor()`, `getDualsolLogicor()` and `getDualfarkasLogicor()` for SCIP logicor constraints (#977)
+- `Expr` and `GenExpr` support `__pos__` magic method like `+Expr` or `+GenExpr`
+- Added type annotations to most methods on the `Model` class
+- Added tests for `getRowLinear()` and extended existing testing for `isActive()`
+### Fixed
+- Fixed Cython 3.3 compatibility (#1248)
+- Made `test_markDoNotAggrVar_and_getStatus` robust to SCIP presolve changes by discovering the aggregated/multi-aggregated variables instead of hardcoding them
+- Ensure probing has ended when freeing scip instance in benders
+### Changed
+- Move magic methods (`__radd__`, `__sub__`, `__rsub__`, `__rmul__`, `__richcmp__`, `__neg__`, and `__rtruediv__`) to `ExprLike` base class (#1204)
+- Speed up `Expr.__add__` and `Expr.__iadd__` via the C-level API (#1205)
+- Replace Python math with C-level math functions and refactor unary expressions (#1224)
+- Speed up `ProdExpr.__neg__` and `Constant.__neg__` via C-level API (#1250)
+- Extended `structured_optimization_trace` recipe to support context-managed JSONL tracing with final `run_end` records, alongside the existing attach-style in-memory tracing.
+- Integration tests now run in the merge queue before merging instead of after pushing to `master` (#1249)
+### Removed
+- `SumExpr`.coefs has been removed; its values were always 1.0 (#1258)
+- Deprecated `getOp` method in `GenExpr` (#1259)
+- Deprecated inner enumerate class `Operator` (#1259)
+
+## 6.2.1 - 2026.05.16
+### Fixed
+- Fixed `AttributeError` when comparing NumPy scalars (e.g. `np.float64`) or 0-dim NumPy arrays against `Expr`/`Variable` on NumPy 2.x (#1218)
+
+## 6.2.0 - 2026.05.11
+### Added
+- Added `solveProbingLPWithPricing()` and test
+- `Expr` and `GenExpr` support NumPy unary functions (`np.sin`, `np.cos`, `np.sqrt`, `np.exp`, `np.log`, `np.absolute`, `np.negative`)
+- `Expr` and `GenExpr` support NumPy binary functions (`np.add`, `np.subtract`, `np.multiply`, `np.divide`, `np.true_divide`, `np.power`, `np.less_equal`, `np.greater_equal`, `np.equal`)
+- Added `getBase()` and `setBase()` methods to `LP` class for getting/setting basis status
+- Added `getMemUsed()`, `getMemTotal()`, and `getMemExternEstim()` methods
+- Added `addMatrixConsDisjunction()` for elementwise disjunctions over matrix constraint expressions (`MatrixExprCons`/`ExprCons`) (#1084)
+- Added `isReoptEnabled()` and raising error if not enabled upon calling `reoptSolve()`
+- SOS1/SOS2 constraints are now realease after addition similar to the other constraint types
+### Fixed
+- Removed `Py_INCREF`/`Py_DECREF` on `Model` in `catchEvent`/`dropEvent` that caused memory leak for imbalanced usage
+- Used `getIndex()` instead of `ptr()` for sorting nonlinear expression terms to avoid nondeterministic behavior
+- Fixed stubtest failures with mypy 1.20 by marking dunder method parameters as positional-only
+- Return `MatrixGenExpr` in `buildGenExprObj` instead of `MatrixExpr`
+- Plugins now hold strong references to their `Model` instead of `weakref.proxy`, fixing `ReferenceError` during cleanup callbacks
+- Made `test_tree` robust to SCIP solver improvements by asserting visited node depths instead of node count
+- Lower macOS wheel `MACOSX_DEPLOYMENT_TARGET` to 11.0 and patch bundled SCIP/SoPlex/GCG and GCC runtime dylibs to match
+### Changed
+- Return NotImplemented for `Expr` and `GenExpr` operators if they can't handle input types in the calculation
+- Speed up `constant * Expr` via C-level API
+- Speed up `Term.__eq__` via the C-level API
+### Removed
+- Removed outdated warning about Make build system incompatibility
+- Removed `Term.ptrtuple` to optimize `Term` memory usage
+
+## 6.1.0 - 2026.01.31
+### Added
+- Support for SCIP 10.0.1
+- Added automated script for generating type stubs
+- Include parameter names in type stubs
+- Added pre-commit hook for automatic stub regeneration (see `.pre-commit-config.yaml`)
+- Wrapped `isObjIntegral()` and test
+- Added `structured_optimization_trace` recipe for structured optimization progress tracking
+- Added methods: `getPrimalDualIntegral()`
+- `getSolVal()` supports `MatrixExpr` now
+### Fixed
+- `getBestSol()` now returns `None` for infeasible problems instead of a `Solution` with `NULL` pointer
+- all fundamental callbacks now raise an error if not implemented
+- Fixed the type of `MatrixExpr.sum(axis=...)` result from `MatrixVariable` to `MatrixExpr`.
+- Updated IIS result in `PyiisfinderExec()`
+- `Model.getVal` now supports `GenExpr` type
+- Fixed `lotsizing_lazy` example
+- Fixed incorrect `getVal()` result when `_bestSol.sol` was outdated
+- Fixed segmentation fault when using `Variable` or `Constraint` objects after `freeTransform()` or `Model` destruction
+- `getTermsQuadratic()` now correctly returns all linear terms
+### Changed
+- changed default value of `enablepricing` flag to `True`
+- Speed up `MatrixExpr.sum(axis=...)` via `quicksum`
+- Speed up `MatrixExpr.add.reduce` via `quicksum`
+- Speed up `np.ndarray(..., dtype=np.float64) @ MatrixExpr`
+- Speed up `Expr * Expr` via C-level API and `Term * Term`
+- Speed up `Term * Term` via a $O(n)$ sort algorithm instead of Python $O(n\log(n))$ sorted function. `Term.__mul__` requires that `Term.vartuple` is sorted.
+- Rename from `Term.__add__` to `Term.__mul__`, due to this method only working with `Expr * Expr`.
+- `MatrixExpr` and `MatrixExprCons` use `__array_ufunc__` protocol to control all `numpy.ufunc` inputs and outputs
+- Set `__array_priority__` for `MatrixExpr` and `MatrixExprCons`
+- changed `addConsNode()` and `addConsLocal()` to mirror `addCons()` and accept `ExprCons` instead of `Constraint`
+- Improved `chgReoptObjective()` performance
+- Return itself for `abs` to `UnaryExpr(Operator.fabs)`
+### Removed
+
+## 6.0.0 - 2025.11.28
+### Added
+- Support for SCIP 10.0.0
+- Added support for IIS - Irreducible Inconsistent Subsystems
+- Added 4 new events: TYPECHANGED, IMPLTYPECHANGED, DUALBOUNDIMPROVED, GAPUPDATED.
+- Support for new implied integrality
+- Wrapped varIsBinary(), varIsIntegral(), varIsImpliedIntegral(), varIsNonImpliedIntegral(), varGetImplType()
+- Interfaced some exact SCIP methods
+- wrapped SCIPprintStatisticsJson
+### Fixed
 ### Changed
 ### Removed
+- Removed methods chgAndConsCheckFlagWhenUpgr, chgAndConsRemovableFlagWhenUpgr
+
+## 5.7.0 - 2025.11.17
+### Added
+- Added possibility of having variables in exponent.
+- Added basic type stubs to help with IDE autocompletion and type checking.
+- MatrixVariable comparisons (<=, >=, ==) now support numpy's broadcast feature.
+- Added methods: getMaxDepth(), getPlungeDepth(), getLowerbound(), getCutoffbound(), getNNodeLPIterations(), getNStrongbranchLPIterations().
+- setup.py now automatically detects conda environments when SCIPOPTDIR is not defined.
+- Added function getStatus() to get variable status in variable class
+- Added function isActive() to get whether a variable is active in variable class
+- Added function markDoNotAggrVar() to prevent a variable from being aggregated
+- Added function markDoNotMultaggrVar() to prevent a variable from being multi-aggregated
+### Fixed
+- Implemented all binary operations between MatrixExpr and GenExpr
+- Fixed the type of @ matrix operation result from MatrixVariable to MatrixExpr.
+- Fixed the case for returning None from the nodeselect callback in Node Selector plugins.
+- Fixed segmentation fault during Benders decomposition cleanup caused by double-free bug
+### Changed
+- Add package extras for test dependencies in `pyproject.toml`
+- Speed up MatrixVariable.sum(axis=None) via quicksum
+- MatrixVariable now supports comparison with Expr
+- Benders subproblem memory is now automatically managed by the master Model - `freeBendersSubproblems()` is deprecated and no longer needed
+### Removed
+
+
+## 5.6.0 - 2025.08.26
+### Added
+- More support for AND-Constraints
+- Added support for knapsack constraints
+- Added isPositive(), isNegative(), isFeasLE(), isFeasLT(), isFeasGE(), isFeasGT(), isHugeValue(), and tests
+- Added SCIP_LOCKTYPE, addVarLocksType(), getNLocksDown(), getNLocksUp(), getNLocksDownType(), getNLocksUpType(), and tests
+- Added addMatrixConsIndicator(), and tests
+- Added SCIPvarMarkRelaxationOnly, SCIPvarIsRelaxationOnly, SCIPvarMarkDeletable, SCIPvarIsDeletable, and tests
+- Wrapped SCIPgetNLPBranchCands
+- Added getConsVals() to get coefficients of any linear type constraint
+- Generalized getLhs() and getRhs() to additionally support any linear type constraint
+- Added recipe for getting local constraints
+- Added enableDebugSol() and disableDebugSol() for controlling the debug solution mechanism if DEBUGSOL=true
+- Added getVarPseudocostScore() and getVarPseudocost()
+- Added getNBranchings() and getNBranchingsCurrentRun()
+- Added isActive() which wraps SCIPvarIsActive() and test
+- Added aggregateVars() and tests
+- Added example shiftbound.py
+- Added a tutorial in ./docs on the presolver plugin
+### Fixed
+- Raised an error when an expression is used when a variable is required
+- Fixed some compile warnings
+### Changed
+- MatrixExpr.sum() now supports axis arguments and can return either a scalar or MatrixExpr, depending on the result dimensions.
+- AddMatrixCons() also accepts ExprCons.
+### Removed
+
+## 5.5.0 - 2025.05.06
+### Added
+- Wrapped SCIPgetChildren and added getChildren and test (also test getOpenNodes) 
+- Wrapped SCIPgetLeaves, SCIPgetNLeaves, and added getLeaves, getNLeaves and test
+- Wrapped SCIPgetSiblings, SCIPgetNSiblings, and added getSiblings, getNSiblings and test
+- Wrapped SCIPdeactivatePricer, SCIPsetConsModifiable, and added deactivatePricer, setModifiable and test
+- Added getLinearConsIndicator
+- Added SCIP_LPPARAM, setIntParam, setRealParam, getIntParam, getRealParam, isOptimal, getObjVal, getRedcost for lpi
+- Added isFeasPositive
+- Added SCIP function SCIProwGetDualsol and wrapper getDualsol
+- Added SCIP function SCIProwGetDualfarkas and wrapper getDualfarkas
+### Fixed
+- Fixed bug when accessing matrix variable attributes
+### Changed
+- Stopped tests from running in draft PRs
+### Removed
+
+## 5.4.1 - 2025.02.24
+### Added
+- Added option to get Lhs, Rhs of nonlinear constraints
+- Added cutoffNode and test
+- Added getMajorVersion, getMinorVersion, and getTechVersion
+- Added addMatrixVar and addMatriCons
+- Added MatrixVariable, MatrixConstraint, MatrixExpr, and MatrixExprCons
+### Fixed
+- Warning at Model initialisation now uses new version calls
+### Changed
+### Removed
+- Removed universal wheel type from setup.cfg (support for Python 2)
+
+## 5.3.0 - 2025.02.07
+### Added
+- Added cdef type declaration of loop variables for slight speedup
+- Added wrappers for setting and getting heuristic timing
+- Added transformed option to getVarDict, updated test
+- Added categorical data example
+- Added printProblem to print problem to stdout
+- Added stage checks to presolve, freereoptsolve, freetransform
+- Added primal_dual_evolution recipe and a plot recipe
+- Added python wrappers for usage of SCIPcopyLargeNeighborhoodSearch, SCIPtranslateSubSol and SCIPhashmapCreate
+### Fixed
+- Added default names to indicator constraints
+### Changed
+- GitHub actions using Mac now use precompiled SCIP from latest release
+### Removed
+
+## 5.2.1 - 2024.10.29
+### Added
+- Expanded Statistics class to more problems.
+- Created Statistics class
+- Added parser to read .stats file
+- Release checklist in `RELEASE.md`
+- Added Python definitions and wrappers for SCIPstartStrongbranch, SCIPendStrongbranch SCIPgetBranchScoreMultiple, 
+  SCIPgetVarStrongbranchInt, SCIPupdateVarPseudocost, SCIPgetVarStrongbranchFrac, SCIPcolGetAge, 
+  SCIPgetVarStrongbranchLast, SCIPgetVarStrongbranchNode, SCIPallColsInLP, SCIPcolGetAge
+- Added getBipartiteGraphRepresentation
+- Added helper functions that facilitate testing
+- Added Python definitions and wrappers for SCIPgetNImplVars, SCIPgetNContVars, SCIPvarMayRoundUp,
+  SCIPvarMayRoundDown, SCIPcreateLPSol, SCIPfeasFloor, SCIPfeasCeil, SCIPfeasRound, SCIPgetPrioChild,
+  SCIPgetPrioSibling
+- Added additional tests to test_nodesel, test_heur, and test_strong_branching
+- Migrated documentation to Readthedocs
+- `attachEventHandlerCallback` method to Model for a more ergonomic way to attach event handlers
+- Added Model method: optimizeNogil
+- Added Solution method: getOrigin, retransform, translate
+- Added SCIP.pxd: SCIP_SOLORIGIN, SCIPcopyOrigVars, SCIPcopyOrigConss, SCIPsolve nogil, SCIPretransformSol, SCIPtranslateSubSol, SCIPsolGetOrigin, SCIPhashmapCreate, SCIPhashmapFree
+- Added additional tests to test_multi_threads, test_solution, and test_copy
+### Fixed
+- Fixed too strict getObjVal, getVal check
+### Changed
+- Changed createSol to now have an option of initialising at the current LP solution
+- Unified documentation style of scip.pxi to numpydocs
+### Removed
+
+## 5.1.1 - 2024-06-22
+### Added
+- Added SCIP_STATUS_DUALLIMIT and SCIP_STATUS_PRIMALLIMIT
+- Added SCIPprintExternalCodes (retrieves version of linked symmetry, lp solver, nl solver etc)
+- Added recipe with reformulation for detecting infeasible constraints
+- Wrapped SCIPcreateOrigSol and added tests 
+- Added verbose option for writeProblem and writeParams
+- Expanded locale test
+- Added methods for creating expression constraints without adding to problem
+- Added methods for creating/adding/appending disjunction constraints
+- Added check for pt_PT locale in test_model.py
+- Added SCIPgetOrigConss and SCIPgetNOrigConss Cython bindings. 
+- Added transformed=False option to getConss, getNConss, and getNVars
+### Fixed
+- Fixed locale errors in reading
+### Changed
+- Made readStatistics a standalone function
+### Removed
+
+## 5.0.1 - 2024-04-05
+### Added
+- Added recipe for nonlinear objective functions
+- Added method for adding piecewise linear constraints
+- Add SCIP function SCIPgetTreesizeEstimation and wrapper getTreesizeEstimation
+- New test for model setLogFile
+### Fixed
+- Fixed locale fix
+- Fixed model.setLogFile(None) error
+- Add recipes sub-package
+- Fixed "weakly-referenced object no longer exists" when calling dropEvent in test_customizedbenders
+- Fixed incorrect writing/printing when user had a non-default locale
+### Changed
+### Removed
+
+## 5.0.0 - 2024-03-05
+### Added
+- Added SCIP function addExprNonlinear
+- Add support for Cython 3
+- Added methods for getting the names of the current stage and of an event
+- Add support for SCIP symmetry graph callbacks in constraint handlers
+### Fixed
+- Fixed README links 
+- Fixed outdated time.clock call in gcp.py
+### Changed
+- Changed default installation option via pypi to package pre-build SCIP
+
+## 4.4.0 - 2023-12-04
+### Added
+- Add getConshdlrName to class Constraint
+- Added all event types and tests for checking them 
+- Added SCIP functions SCIPconsGetNVars, SCIPconsGetVars
+- Added SCIP functions SCIPchgCoefLinear, SCIPaddCoefLinear and SCIPdelCoefLinear
+- Added SCIP function SCIPgetSolTime and wrapper getSolTime
+- Added convenience methods relax and getVarDict
+- Added SCIP functions hasPrimalRay, getPrimalRay, getPrimalRayVal
+### Fixed
+- Fixed mistake with outdated values for several enums
+- Correctly set result, lowerbound in PyRelaxExec
+- Fixed typo in documentation of chgRhs
+- Pricer plugin fundamental callbacks now raise an error if not implemented
+- Brachrule plugin fundamental callbacks now raise an error if not implemented
+- Fixed segmentation fault when accessing the Solution class directly
+- Changed getSols so that it prints solutions in terms of the original variables
+- Fixed error message in _checkStage
+### Changed
+- Made it so SCIP macros are used directly, instead of being manually inputted. 
+- Improved error message when using < or > instead of <= or >=
+### Removed
+- Removed double declaration of SCIPfindEventhdlr
+
+## 4.3.0 - 2023-03-17
+### Added
+- Add SCIP function SCIprowGetOriginCons
+- Add getConsOriginConshdlrtype to Row
+- Add possibility to use sine and cosing
+- Add ability to set priced variable score 
+
+### Fixed
+### Changed
+### Removed
+- Removed function rowGetNNonz
+
+## 4.2.0 - 2022-03-21
+### Added
+- Interface to include custom reader plugins
+- New test for reader plugin
+### Fixed
+- revert change from #543 to fix #570 (closing file descriptors)
+- use correct offset value when updating the objective function
+### Changed
+### Removed
+
+## 4.1.0 - 2022-02-22
+### Added
+- Interface to include custom cut selector plugins
+- New test for cut selector plugin
+- Add SCIP function SCIPgetCutLPSolCutoffDistance and wrapper getCutLPSolCutoffDistance
+- Add SCIP function SCIPprintBestTransSol and wrapper writeBestTransSol
+- Add SCIP function SCIPprintTransSol and wrapper writeTransSol
+- Add SCIP function SCIPgetRowNumIntCols and wrapper getRowNumIntCols
+- Add SCIP function SCIProwGetNNonz and wrapper rowGetNNonz
+- Add SCIP function SCIPgetRowObjParallelism and wrapper getRowObjParallelism
+- Add SCIP function SCIPgetNSepaRounds and wrapper getNSepaRounds
+- Add SCIP function SCIPgetRowLinear and wrapper getRowLinear
+- Add SCIP function SCIProwIsInGlobalCutpool and wrapper isInGlobalCutpool
+- Add SCIP function SCIProwGetParallelism and wrapper getRowParallelism
+- Add getObjCoeff call to Column
+- Add isLocal call to Row
+- Add getNorm call to Row
+- Add getRowDualSol to Row
+- Add getDualSolVal to Model
+- added activeone parameter of addConsIndicator() allows to activate the constraint if the binary (indicator) variable is 1 or 0.
+- added function getSlackVarIndicator(), returns the slack variable of the indicator constraint.
+### Fixed
+- cmake / make install works from build directory
+### Changed
+### Removed
+
+## 4.0.0 - 2021-12-15
+### Added
+- many functions regarding the new cons expression logic and implementation
+### Fixed
+- fixed tests and github actions to fit the new SCIP version.
+### Changed
+- SCIP8 changes the way nonlinear constraints are handled inside SCIP. These changes have consequences for their respective PySCIPOpt wrappers and have changed regardingly. Please refer to the latest SCIP report for an in-depth explanation of these changes.
+- small changes to the documentation.
+### Removed
+- some of the deprecated functions that could not be made backwards compatible
+
+## 3.5.0 - 2021-12-07
+### Added
+### Fixed
+- close file descriptors after file operation is finished
+- fixed deletion of variable pointer from model when calling delVar
+- fixed scip install for MAC integration test
+- Fixing assert failure if scip is compiled using quadprecision
+- fixed missing GIL by @AntoinePrv in #539
+### Changed
+- changed integration test to include scip TPI (tinycthreads)
+### Removed
+- removed Mac integration test until the segmentation fault in test_memory.py is fixed on Mac 
 
 ## 3.4.0 - 2021-10-30
 ### Added
 - add support for concurrent optimization
   - note that SCIP needs to be linked to a TPI (task processing interface) to use this feature
+- SCIPsolverConcurrent implementation from issue #229 by @TNonet in #535
+- fix action to also run on external PRs by @mattmilten in #536
+- fix concurrent solve test by @mattmilten in #537
 
 ## 3.3.0 - 2021-08-23
 ### Added

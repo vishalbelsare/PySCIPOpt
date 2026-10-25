@@ -1,6 +1,12 @@
+import itertools
+import os
+
+import numpy as np
 import pytest
 
-from pyscipopt import Model
+from pyscipopt import SCIP_BRANCHDIR, SCIP_PARAMSETTING, SCIP_STAGE, Model, quicksum
+from helpers.utils import random_mip_1
+
 
 def test_model():
     # create solver instance
@@ -40,6 +46,7 @@ def test_model():
     assert s.getRhs(c) == 6.0
 
     # solve problem
+    s.presolve() # to test presolve method
     s.optimize()
 
     solution = s.getBestSol()
@@ -64,6 +71,7 @@ def test_model():
 
     s.writeProblem('model')
     s.writeProblem('model.lp')
+    s.printProblem()
 
     s.freeProb()
     s = Model()
@@ -118,7 +126,6 @@ def test_multiple_cons_simple():
     s.freeProb()
     m.freeProb()
 
-
 def test_multiple_cons_names():
     m = Model()
     x = m.addVar("x", vtype = 'C', obj = 1.0)
@@ -141,7 +148,8 @@ def test_multiple_cons_names():
 
     assert len(conss) == 5
     assert all([c.name.startswith(name + "_") for c in conss])
-
+    assert conss == m.getConss()
+    assert m.getNConss() == 5
 
 def test_multiple_cons_params():
     """Test if setting the remaining parameters works as expected"""
@@ -170,6 +178,38 @@ def test_multiple_cons_params():
 
     assert_conss_neq(conss[0], conss[1])
 
+def test_addCoefLinear():
+    m = Model()
+    x = m.addVar(obj=1)
+    y = m.addVar(obj=0)
+    c = m.addCons(x >= 1)
+
+    m.addCoefLinear(c, y, 1)
+
+    m.optimize()
+    assert m.getVal(x) == 0
+
+def test_delCoefLinear():
+    m = Model()
+    x = m.addVar(obj=1)
+    y = m.addVar(obj=0)
+    c = m.addCons(x + y >= 1)
+
+    m.delCoefLinear(c,y)
+
+    m.optimize()
+    assert m.getVal(x) == 1
+
+def test_chgCoefLinear():
+    m = Model()
+    x = m.addVar(obj=10)
+    y = m.addVar(obj=1)
+    c = m.addCons(x + y >= 1)
+
+    m.chgCoefLinear(c, y, 0.001)
+
+    m.optimize()
+    assert m.getObjVal() == 10
 
 def test_model_ptr():
     model1 = Model()
@@ -183,11 +223,518 @@ def test_model_ptr():
     with pytest.raises(ValueError):
         Model.from_ptr("some gibberish", take_ownership=False)
 
+def test_model_relax():
+    model = Model()
+    x = {}
+    for i in range(5):
+        x[i] = model.addVar(lb = -i, ub = i, vtype="C")
+    for i in range(10,15):
+        x[i] = model.addVar(lb = -i, ub = i, vtype="I")
+    for i in range(20,25):
+        x[i] = model.addVar(vtype="B")
+    
+    model.relax()
+    for v in x.values():
+        var_lb = v.getLbGlobal()
+        var_ub = v.getUbGlobal()
+        assert v.getLbGlobal() == var_lb
+        assert v.getUbGlobal() == var_ub
+        assert v.vtype() == "CONTINUOUS"
 
-if __name__ == "__main__":
-    test_model()
-    test_solve_concurrent()
-    test_multiple_cons_simple()
-    test_multiple_cons_names()
-    test_multiple_cons_params()
-    test_model_ptr()
+def test_getVarsDict():
+    model = Model()
+    x = {}
+    for i in range(5):
+        x[i] = model.addVar(lb = -i, ub = i, vtype="C")
+    for i in range(5,10):
+        x[i] = model.addVar(lb = -i, ub = i, vtype="I")
+    for i in range(10,15):
+        x[i] = model.addVar(vtype="B")
+
+    model.addConsIndicator(x[0] <= 4, x[10])
+    
+    model.setPresolve(0)
+    model.hideOutput()
+    model.optimize()
+    var_dict = model.getVarDict()
+    var_dict_transformed = model.getVarDict(transformed=True)
+    assert len(var_dict) == model.getNVars(transformed=False)
+    assert len(var_dict_transformed) == model.getNVars(transformed=True)
+
+    for v in x.values():
+        assert v.name in var_dict
+        assert model.getVal(v) == var_dict[v.name]
+
+def test_objLim():
+    m = Model()
+
+    x = m.addVar(obj=1, lb=2)
+    m.setObjlimit(1)
+
+    m.optimize()
+    assert m.getNLimSolsFound() == 0
+
+    m = Model()
+    x = m.addVar(obj=1, lb=2)
+
+    m.setObjlimit(2)
+    m.optimize()
+    assert m.getNLimSolsFound() == 1
+    
+def test_getStage():
+    m = Model() 
+
+    assert m.getStage() == SCIP_STAGE.PROBLEM
+    assert m.getStageName() == "PROBLEM"
+
+    x = m.addVar()
+    m.addCons(x >= 1)    
+    
+    assert m.getStage() == SCIP_STAGE.PROBLEM
+    assert m.getStageName() == "PROBLEM" 
+
+    m.optimize()
+
+    assert m.getStage() == SCIP_STAGE.SOLVED
+    assert m.getStageName() == "SOLVED"
+
+def test_getObjective():
+    m = Model()
+    m.addVar(obj=2, name="x1")
+    m.addVar(obj=3, name="x2")
+
+    assert str(m.getObjective()) == "Expr({Term(x1): 2.0, Term(x2): 3.0})"
+
+def test_getTreesizeEstimation():
+    m = Model()
+
+    assert m.getTreesizeEstimation() == -1
+
+    x = m.addVar("x", vtype='B', obj=1.0)
+    y = m.addVar("y", vtype='B', obj=2.0)
+    c = m.addCons(x + y <= 10.0)
+    m.setMaximize()
+
+    m.optimize()
+
+    assert m.getTreesizeEstimation() > 0
+
+def test_setLogFile():
+    m = Model()
+    x = m.addVar("x", vtype="I")
+    y = m.addVar("y", vtype="I")
+    m.addCons(x + y == 1)
+    m.setObjective(2*x+y)
+    
+    log_file_name = "test_setLogFile.log"
+    m.setLogfile(log_file_name)
+    assert os.path.exists(log_file_name)
+    
+    m.optimize()
+    del m
+    assert os.path.getsize(log_file_name) > 0
+    os.remove(log_file_name)
+
+def test_setLogFile_none():
+    m = Model()
+    x = m.addVar("x", vtype="I")
+    y = m.addVar("y", vtype="I")
+    m.addCons(x + y == 1)
+    m.setObjective(2*x+y)
+    
+    log_file_name = "test_setLogfile_none.log"
+    m.setLogfile(log_file_name)
+    assert os.path.exists(log_file_name)
+    
+    m.setLogfile(None)
+    m.optimize()
+    del m
+    assert os.path.getsize(log_file_name) == 0
+    os.remove(log_file_name)
+   
+def test_locale():
+    on_release = os.getenv('RELEASE') is not None
+    if on_release:
+        pytest.skip("Skip this test on release builds")
+
+    import locale
+
+    m = Model()
+    m.addVar(lb=1.1)
+    
+    try:
+        locale.setlocale(locale.LC_NUMERIC, "pt_PT")
+        assert locale.str(1.1) == "1,1"
+    
+        m.writeProblem("model.cip")
+
+        with open("model.cip") as file:
+            assert "1,1" not in file.read()
+            
+        m.readProblem(os.path.join("tests", "data", "test_locale.cip"))
+
+        locale.setlocale(locale.LC_NUMERIC,"")
+    except Exception:
+        pytest.skip("pt_PT locale was not found. It might need to be installed.")    
+
+def test_version_external_codes():
+     scip = Model()
+     scip.printVersion()
+     scip.printExternalCodeVersions()
+
+def test_primal_dual_limit():
+
+    def build_scip_model():
+        scip = Model()
+        # Make a basic minimum spanning hypertree problem
+        # Let's construct a problem with 15 vertices and 40 hyperedges. The hyperedges are our variables.
+        v = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+        e = {}
+        for i in range(40):
+            e[i] = scip.addVar(vtype='B', name='hyperedge_{}'.format(i))
+
+        # Construct a dummy incident matrix
+        A = [[1, 2, 3], [2, 3, 4, 5], [4, 9], [7, 8, 9], [0, 8, 9],
+             [1, 6, 8], [0, 1, 2, 9], [0, 3, 5, 7, 8], [2, 3], [6, 9],
+             [5, 8], [1, 9], [2, 7, 8, 9], [3, 8], [2, 4],
+             [0, 1], [0, 1, 4], [2, 5], [1, 6, 7, 8], [1, 3, 4, 7, 9],
+             [11, 14], [0, 2, 14], [2, 7, 8, 10], [0, 7, 10, 14], [1, 6, 11],
+             [5, 8, 12], [3, 4, 14], [0, 12], [4, 8, 12], [4, 7, 9, 11, 14],
+             [3, 12, 13], [2, 3, 4, 7, 11, 14], [0, 5, 10], [2, 7, 13], [4, 9, 14],
+             [7, 8, 10], [10, 13], [3, 6, 11], [2, 8, 9, 11], [3, 13]]
+
+        # Create a cost vector for each hyperedge
+        c = [2.5, 2.9, 3.2, 7, 1.2, 0.5,
+             8.6, 9, 6.7, 0.3, 4,
+             0.9, 1.8, 6.7, 3, 2.1,
+             1.8, 1.9, 0.5, 4.3, 5.6,
+             3.8, 4.6, 4.1, 1.8, 2.5,
+             3.2, 3.1, 0.5, 1.8, 9.2,
+             2.5, 6.4, 2.1, 1.9, 2.7,
+             1.6, 0.7, 8.2, 7.9, 3]
+
+        # Add constraint that your hypertree touches all vertices
+        scip.addCons(quicksum((len(A[i]) - 1) * e[i] for i in range(len(A))) == len(v) - 1)
+
+        # Now add the sub-tour elimination constraints.
+        for i in range(2, len(v) + 1):
+            for combination in itertools.combinations(v, i):
+                scip.addCons(
+                    quicksum(max(len(set(combination) & set(A[j])) - 1, 0) * e[j] for j in range(len(A))) <= i - 1,
+                    name='cons_{}'.format(combination))
+
+        # Add objective to minimise the cost
+        scip.setObjective(quicksum(c[i] * e[i] for i in range(len(A))), sense='minimize')
+        return scip
+
+    scip = build_scip_model()
+    scip.setParam("limits/primal", 100)
+    scip.setHeuristics(SCIP_PARAMSETTING.OFF)
+    scip.setSeparating(SCIP_PARAMSETTING.OFF)
+    scip.setPresolve(SCIP_PARAMSETTING.OFF)
+    scip.setParam("branching/random/priority", 1000000)
+    scip.optimize()
+    assert(scip.getStatus() == "primallimit"), scip.getStatus()
+
+    scip = build_scip_model()
+    scip.setHeuristics(SCIP_PARAMSETTING.OFF)
+    scip.setSeparating(SCIP_PARAMSETTING.OFF)
+    scip.setPresolve(SCIP_PARAMSETTING.OFF)
+    scip.setParam("limits/dual", -10)
+    scip.optimize()
+    assert (scip.getStatus() == "duallimit"), scip.getStatus()
+
+def test_getObjVal():
+    m = Model()
+
+    x = m.addVar(obj=0)
+    y = m.addVar(obj = 1)
+    z = m.addVar(obj = 2)
+
+    m.addCons(x+y+z >= 0)
+    m.addCons(y+z >= 3)
+    m.addCons(z >= 8)
+
+    m.setParam("limits/solutions", 0)
+    m.optimize()
+    
+    try:
+        m.getObjVal()
+    except Warning:
+        pass
+
+    try:
+        m.getVal(x)
+    except Warning:
+        pass
+
+    m.freeTransform()
+    m.setParam("limits/solutions", 1)
+    m.presolve()
+
+    assert m.getObjVal()
+    assert m.getVal(x)
+
+    m.freeTransform()
+    m.setParam("limits/solutions", -1)
+
+    m.optimize()
+
+    assert m.getObjVal() == 16 
+    assert m.getVal(x) == 0
+
+    assert m.getObjVal() == 16 
+    assert m.getVal(x) == 0
+
+def test_getObjVal_missing_bestSol():
+    m = Model()
+    m.hideOutput()
+
+    x = m.addVar("x", obj=2.0)
+    m.addCons(x >= 1.0)
+
+    # Add a solution 
+    sol = m.createSol()
+    m.setSolVal(sol, x, 10.0)
+    m.addSol(sol)
+
+    # Without the fix from #1272, m._bestSol remained NULL,
+    # causing an assertion failure: assert self._bestSol.sol != NULL
+    assert m.getObjVal() == 20.0
+
+def test_getObjVal_outdated_bestSol():
+    m = Model()
+    m.hideOutput()
+
+    x = m.addVar("x", obj=2.0)
+    m.addCons(x >= 1.0)
+
+    # Add initial solution and populate _bestSol
+    sol1 = m.createSol()
+    m.setSolVal(sol1, x, 10.0)
+    m.addSol(sol1)
+    m.getBestSol()  # populates m._bestSol with sol1
+
+    # Add a better solution
+    sol2 = m.createSol()
+    m.setSolVal(sol2, x, 3.0)
+    m.addSol(sol2)
+
+    # Without the fix from #1272, _bestSol remained stuck
+    # on sol1 and incorrectly returned 20.0 instead of 6.0
+    assert m.getObjVal() == 6.0
+
+def test_getVal_missing_bestSol():
+    m = Model()
+    m.hideOutput()
+
+    x = m.addVar("x", obj=2.0)
+    m.addCons(x >= 1.0)
+
+    # Add a solution 
+    sol = m.createSol()
+    m.setSolVal(sol, x, 10.0)
+    m.addSol(sol)
+
+    # Without the fix from #993, m._bestSol was None here
+    # causing "No solution available" warning
+    assert m.getVal(x) == 10.0
+
+def test_getVal_outdated_bestSol():
+    m = Model()
+    m.hideOutput()
+
+    x = m.addVar("x", obj=2.0)
+    m.addCons(x >= 1.0)
+
+    # Add initial solution and populate _bestSol
+    sol1 = m.createSol()
+    m.setSolVal(sol1, x, 10.0)
+    m.addSol(sol1)
+    m.getBestSol()  # populates m._bestSol with sol1
+
+    # Add a better solution
+    sol2 = m.createSol()
+    m.setSolVal(sol2, x, 3.0)
+    m.addSol(sol2)
+
+    # Without the fix from #993, _bestSol remained stuck
+    # on sol1 and incorrectly returned 10.0 instead of 3.0
+    assert m.getVal(x) == 3.0
+
+# tests writeProblem() after redirectOutput()
+def test_redirection():
+
+    # create problem instances
+    original = random_mip_1(False, False, False, -1, True)
+    redirect = Model()
+
+    # redirect console output
+    original.redirectOutput()
+
+    # write problem instance
+    original.writeProblem("redirection.lp")
+
+    # solve original instance
+    original.optimize()
+
+    # read problem instance
+    redirect.readProblem("redirection.lp")
+
+    # remove problem file
+    os.remove("redirection.lp")
+
+    # compare problem dimensions
+    assert redirect.getNVars(False) == original.getNVars(False)
+    assert redirect.getNConss(False) == original.getNConss(False)
+
+    # solve redirect instance
+    redirect.optimize()
+
+    # compare objective values
+    assert original.isEQ(redirect.getObjVal(), original.getObjVal())
+
+def test_comparisons():
+    from math import inf
+    model = Model()
+
+    assert model.isPositive(1.)
+    assert model.isNegative(-1.)
+
+    assert not model.isPositive(0.)
+    assert not model.isNegative(0.)
+
+    assert model.isHugeValue(inf)
+
+def test_getVarPseudocostScore():
+    m = Model()
+
+    m.addVar("x", vtype='B', obj=1.0)
+    m.addVar("y", vtype='B', obj=2.0)
+
+    m.setPresolve(SCIP_PARAMSETTING.OFF)
+    m.presolve()
+
+    var = m.getVars(transformed=True)[0]
+
+    p = m.getVarPseudocostScore(var, 1)
+    assert m.isEQ(p, 1)
+
+    p = m.getVarPseudocostScore(var, 0.5)
+    assert m.isEQ(p, 0.25)
+
+def test_getVarPseudocost():
+    m = Model()
+
+    m.addVar("x", vtype='B', obj=1.0)
+    m.addVar("y", vtype='B', obj=2.0)
+
+    m.setPresolve(SCIP_PARAMSETTING.OFF)
+    m.presolve()
+
+    var = m.getVars(transformed=True)[0]
+
+    p = m.getVarPseudocost(var, SCIP_BRANCHDIR.UPWARDS)
+    assert m.isEQ(p, 1)
+
+    m.optimize()
+    m.updateVarPseudocost(var, 1, 12, 1)
+    p = m.getVarPseudocost(var, SCIP_BRANCHDIR.UPWARDS)
+
+    # Not exactly 12 because the new value is a weighted sum of all the updates
+    assert m.isEQ(p, 12.0001)
+
+def test_objIntegral():
+    m = Model()
+    m.setObjIntegral()
+    assert m.isObjIntegral()
+
+    m = Model()
+    x = m.addVar(vtype='C', obj=1.5)
+    m.addCons(x >= 0)
+    m.optimize()
+    assert not m.isObjIntegral()
+
+
+def test_freeTransform_repr():
+    """See Issue #604 and PR #1161."""
+    m = Model()
+
+    x = m.addVar("x", vtype='B', obj=1.0)
+    c = m.addCons(x >= 0, name="mycons")
+
+    m.setPresolve(SCIP_PARAMSETTING.OFF)
+    m.presolve()
+
+    transformed_x = m.getTransformedVar(x)
+    transformed_c = m.getTransformedCons(c)
+
+    assert repr(transformed_x) == "t_x"
+    assert repr(transformed_c) == "mycons"
+
+    # Without the fix in PR #1161, transformed objects would segfault
+    m.freeTransform()
+    assert repr(transformed_x) == ""
+    assert repr(transformed_c) == ""
+    assert repr(x) == "x"
+    assert repr(c) == "mycons"
+
+
+def test_model_dealloc_repr():
+    """See Issue #604 and PR #1161."""
+    import gc
+
+    def create_model_and_get_objects():
+        m = Model()
+        x = m.addVar("x", vtype='B', obj=1.0)
+        c = m.addCons(x >= 0, name="mycons")
+        return x, c
+
+    x, c = create_model_and_get_objects()
+    gc.collect()
+
+    assert repr(x) == ""
+    assert repr(c) == ""
+
+
+def test_getSolVal():
+    # fix #1136
+
+    m = Model()
+    x = m.addVar(vtype="B")
+    y = m.addMatrixVar(2, vtype="B")
+
+    m.setObjective(x + y.sum())
+    m.optimize()
+    sol = m.getBestSol()
+
+    assert m.getSolVal(sol, x) == m.getVal(x)
+    assert m.getVal(x) == 0
+
+    assert np.array_equal(m.getSolVal(sol, y), m.getVal(y))
+    assert np.array_equal(m.getVal(y), np.array([0, 0]))
+
+    with pytest.raises(TypeError):
+        m.getVal("not_a_var")
+    with pytest.raises(TypeError):
+        m.getSolVal(sol, "not_a_var")
+
+
+def test_memory_methods():
+    m = Model()
+
+    # Memory values should be non-negative even on an empty model
+    assert m.getMemUsed() >= 0
+    assert m.getMemTotal() >= 0
+    assert m.getMemExternEstim() >= 0
+
+    # Total allocated should be at least as much as actively used
+    assert m.getMemTotal() >= m.getMemUsed()
+
+    # After adding variables and solving, memory usage should increase
+    x = m.addVar("x", vtype="C", obj=1.0)
+    m.addCons(x >= 0)
+    m.optimize()
+
+    assert m.getMemUsed() > 0
+    assert m.getMemTotal() > 0

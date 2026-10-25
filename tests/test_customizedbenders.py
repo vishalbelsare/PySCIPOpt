@@ -54,7 +54,7 @@ class testBenders(Benders):
     def benderssolvesubconvex(self, solution, probnumber, onlyconvex):
         self.model.setupBendersSubproblem(probnumber, self, solution)
         self.subprob.solveProbingLP()
-        subprob = self.model.getBendersSubproblem(probnumber, self)
+        subprob = self.model.getBendersSubproblem(probnumber, self)  
         assert self.subprob.getObjVal() == subprob.getObjVal()
 
         result_dict = {}
@@ -188,7 +188,7 @@ def make_data():
     return I,J,d,M,f,c
 
 
-def test_flpbenders_defcuts():
+def flpbenders_defcuts_test():
     '''
     test the Benders' decomposition plugins with the facility location problem.
     '''
@@ -228,14 +228,9 @@ def test_flpbenders_defcuts():
 
     master.printStatistics()
 
-    # since the subproblems were setup and then solved, we need to free the
-    # subproblems. This must happen after the solution is extracted, otherwise
-    # the solution will be lost
-    master.freeBendersSubproblems()
-
     return master.getObjVal()
 
-def test_flpbenders_customcuts():
+def flpbenders_customcuts_test():
     '''
     test the Benders' decomposition plugins with the facility location problem.
     '''
@@ -278,14 +273,9 @@ def test_flpbenders_customcuts():
 
     master.printStatistics()
 
-    # since the subproblems were setup and then solved, we need to free the
-    # subproblems. This must happen after the solution is extracted, otherwise
-    # the solution will be lost
-    master.freeBendersSubproblems()
-
     return master.getObjVal()
 
-def test_flp():
+def flp_test():
     '''
     test the Benders' decomposition plugins with the facility location problem.
     '''
@@ -309,10 +299,11 @@ def test_flp():
 
     return master.getObjVal()
 
-if __name__ == "__main__":
-    defcutsobj = test_flpbenders_defcuts()
-    customcutsobj = test_flpbenders_customcuts()
-    monolithicobj = test_flp()
+
+def test_customized_benders():
+    defcutsobj = flpbenders_defcuts_test()
+    customcutsobj = flpbenders_customcuts_test()
+    monolithicobj = flp_test()
 
     assert defcutsobj == customcutsobj
     assert defcutsobj == monolithicobj

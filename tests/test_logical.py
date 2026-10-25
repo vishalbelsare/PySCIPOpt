@@ -1,12 +1,7 @@
 from pyscipopt import Model
 from pyscipopt import quicksum
 
-try:
-    import pytest
-    itertools = pytest.importorskip("itertools")
-except ImportError:
-    import itertools
-product = itertools.product
+import pytest
 
 
 # Testing AND/OR/XOR constraints
@@ -42,7 +37,7 @@ def getVarByName(m, name):
         return [v for v in m.getVars() if name == v.name][0]
     except IndexError:
         return None
-
+    
 
 def getAllVarsByName(m, name):
     try:

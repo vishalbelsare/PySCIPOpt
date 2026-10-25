@@ -1,8 +1,7 @@
 from pyscipopt import Model, Conshdlr, quicksum, SCIP_RESULT
-
+import itertools
 import pytest
 
-itertools = pytest.importorskip("itertools")
 networkx = pytest.importorskip("networkx")
 
 EPS = 1.e-6
@@ -112,7 +111,3 @@ def test_main():
 
     print("Optimal tour:", edges)
     print("Optimal cost:", objective_value)
-
-
-if __name__ == "__main__":
-    test_main()

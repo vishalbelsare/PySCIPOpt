@@ -25,61 +25,59 @@ cdef class Branchrule:
 
     def branchexeclp(self, allowaddcons):
         '''executes branching rule for fractional LP solution'''
-        # this method needs to be implemented by the user
-        return {}
+        raise NotImplementedError("branchexeclp() is a fundamental callback and should be implemented in the derived "
+                                  "class")
 
     def branchexecext(self, allowaddcons):
         '''executes branching rule for external branching candidates '''
-        # this method needs to be implemented by the user
-        return {}
+        raise NotImplementedError("branchexecext() is a fundamental callback and should be implemented in the derived class")
 
     def branchexecps(self, allowaddcons):
         '''executes branching rule for not completely fixed pseudo solution '''
         # this method needs to be implemented by the user
-        return {}
+        raise NotImplementedError("branchexecps() is a fundamental callback and should be implemented in the derived class")
 
 
 
-cdef SCIP_RETCODE PyBranchruleCopy (SCIP* scip, SCIP_BRANCHRULE* branchrule) with gil:
+cdef SCIP_RETCODE PyBranchruleCopy (SCIP* scip, SCIP_BRANCHRULE* branchrule) noexcept with gil:
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyBranchruleFree (SCIP* scip, SCIP_BRANCHRULE* branchrule) with gil:
+cdef SCIP_RETCODE PyBranchruleFree (SCIP* scip, SCIP_BRANCHRULE* branchrule) noexcept with gil:
     cdef SCIP_BRANCHRULEDATA* branchruledata
     branchruledata = SCIPbranchruleGetData(branchrule)
     PyBranchrule = <Branchrule>branchruledata
     PyBranchrule.branchfree()
-    Py_DECREF(PyBranchrule)
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyBranchruleInit (SCIP* scip, SCIP_BRANCHRULE* branchrule) with gil:
+cdef SCIP_RETCODE PyBranchruleInit (SCIP* scip, SCIP_BRANCHRULE* branchrule) noexcept with gil:
     cdef SCIP_BRANCHRULEDATA* branchruledata
     branchruledata = SCIPbranchruleGetData(branchrule)
     PyBranchrule = <Branchrule>branchruledata
     PyBranchrule.branchinit()
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyBranchruleExit (SCIP* scip, SCIP_BRANCHRULE* branchrule) with gil:
+cdef SCIP_RETCODE PyBranchruleExit (SCIP* scip, SCIP_BRANCHRULE* branchrule) noexcept with gil:
     cdef SCIP_BRANCHRULEDATA* branchruledata
     branchruledata = SCIPbranchruleGetData(branchrule)
     PyBranchrule = <Branchrule>branchruledata
     PyBranchrule.branchexit()
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyBranchruleInitsol (SCIP* scip, SCIP_BRANCHRULE* branchrule) with gil:
+cdef SCIP_RETCODE PyBranchruleInitsol (SCIP* scip, SCIP_BRANCHRULE* branchrule) noexcept with gil:
     cdef SCIP_BRANCHRULEDATA* branchruledata
     branchruledata = SCIPbranchruleGetData(branchrule)
     PyBranchrule = <Branchrule>branchruledata
     PyBranchrule.branchinitsol()
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyBranchruleExitsol (SCIP* scip, SCIP_BRANCHRULE* branchrule) with gil:
+cdef SCIP_RETCODE PyBranchruleExitsol (SCIP* scip, SCIP_BRANCHRULE* branchrule) noexcept with gil:
     cdef SCIP_BRANCHRULEDATA* branchruledata
     branchruledata = SCIPbranchruleGetData(branchrule)
     PyBranchrule = <Branchrule>branchruledata
     PyBranchrule.branchexitsol()
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyBranchruleExeclp (SCIP* scip, SCIP_BRANCHRULE* branchrule, SCIP_Bool allowaddcons, SCIP_RESULT* result) with gil:
+cdef SCIP_RETCODE PyBranchruleExeclp (SCIP* scip, SCIP_BRANCHRULE* branchrule, SCIP_Bool allowaddcons, SCIP_RESULT* result) noexcept with gil:
     cdef SCIP_BRANCHRULEDATA* branchruledata
     branchruledata = SCIPbranchruleGetData(branchrule)
     PyBranchrule = <Branchrule>branchruledata
@@ -87,7 +85,7 @@ cdef SCIP_RETCODE PyBranchruleExeclp (SCIP* scip, SCIP_BRANCHRULE* branchrule, S
     result[0] = result_dict.get("result", <SCIP_RESULT>result[0])
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyBranchruleExecext(SCIP* scip, SCIP_BRANCHRULE* branchrule, SCIP_Bool allowaddcons, SCIP_RESULT* result) with gil:
+cdef SCIP_RETCODE PyBranchruleExecext(SCIP* scip, SCIP_BRANCHRULE* branchrule, SCIP_Bool allowaddcons, SCIP_RESULT* result) noexcept with gil:
     cdef SCIP_BRANCHRULEDATA* branchruledata
     branchruledata = SCIPbranchruleGetData(branchrule)
     PyBranchrule = <Branchrule>branchruledata
@@ -95,7 +93,7 @@ cdef SCIP_RETCODE PyBranchruleExecext(SCIP* scip, SCIP_BRANCHRULE* branchrule, S
     result[0] = result_dict.get("result", <SCIP_RESULT>result[0])
     return SCIP_OKAY
 
-cdef SCIP_RETCODE PyBranchruleExecps(SCIP* scip, SCIP_BRANCHRULE* branchrule, SCIP_Bool allowaddcons, SCIP_RESULT* result) with gil:
+cdef SCIP_RETCODE PyBranchruleExecps(SCIP* scip, SCIP_BRANCHRULE* branchrule, SCIP_Bool allowaddcons, SCIP_RESULT* result) noexcept with gil:
     cdef SCIP_BRANCHRULEDATA* branchruledata
     branchruledata = SCIPbranchruleGetData(branchrule)
     PyBranchrule = <Branchrule>branchruledata

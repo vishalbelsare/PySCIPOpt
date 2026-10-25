@@ -1,6 +1,5 @@
 import pytest
-from pyscipopt.scip import Model, is_memory_freed
-from util import is_optimized_mode
+from pyscipopt.scip import Model, is_memory_freed, print_memory_in_use
 
 def test_not_freed():
     if is_optimized_mode():
@@ -15,6 +14,9 @@ def test_freed():
     del m
     assert is_memory_freed()
 
-if __name__ == "__main__":
-    test_not_freed()
-    test_freed()
+def test_print_memory_in_use():
+    print_memory_in_use()
+
+def is_optimized_mode():
+    model = Model()
+    return is_memory_freed()
